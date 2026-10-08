@@ -5,6 +5,15 @@
 
 from __future__ import annotations
 
+# 导入即注册
+from . import (  # noqa: E402,F401
+    consistency,
+    instruction,
+    metadata,
+    report_contract,
+    security,
+    structure,
+)
 from .base import (
     RegisteredRule,
     categories,
@@ -13,14 +22,13 @@ from .base import (
     rule,
     run_checks,
 )
+from .repo import check_repository
 from .security import scan_secrets
-
-# 导入即注册
-from . import consistency, instruction, metadata, report_contract, security, structure  # noqa: E402,F401
 
 __all__ = [
     "RegisteredRule",
     "categories",
+    "check_repository",
     "finding",
     "registered_rules",
     "rule",
