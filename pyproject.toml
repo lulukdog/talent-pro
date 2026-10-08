@@ -1,0 +1,45 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "talent-pro"
+version = "0.1.0"
+description = "考核题库开发工具链：题目脚手架、规范校验、报告解析与里程碑管理"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "zhaolu", email = "zhaolu01@01.ai" }]
+keywords = ["harbor", "terminal-bench", "benchmark", "examination", "evaluation"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.6"]
+
+[project.urls]
+Repository = "https://github.com/lulukdog/talent-pro"
+
+[tool.hatch.build.targets.wheel]
+packages = ["talentpro"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = ["error"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+# 题面与容器模板中存在天然的较长文本行
+ignore = ["E501"]
