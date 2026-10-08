@@ -167,38 +167,49 @@ def stage_for(key: str) -> Stage | None:
 
 
 def plan_milestones_by_stage(commits: Sequence[Commit]) -> list[MilestoneDraft]:
-    """按业务阶段聚合提交，颗粒度对齐平台建议（通常 6~8 个里程碑）。"""
-    groups: list[tuple[Stage, list[Commit]]] = []
+    """按业务阶段聚合提交，颗粒度对齐平台建议（通常 6~10 个里程碑）。
+
+    同一阶段在后续再次出现（迭代增强）时单独成段并加「迭代增强」后缀，避免出现两个
+    同名里程碑，同时保证每段仍是连续的提交区间。
+    """
+    groups: list[tuple[Stage, str, str, list[Commit]]] = []
+    seen: set[str] = set()
     current: Stage | None = None
+
     for commit in commits:
         commit_type, scope = parse_conventional(commit.subject)
         stage = stage_for(scope or commit_type or "other")
-        if stage is None or stage is not current:
-            if stage is None and current is not None:
-                current_tuple = groups[-1]
-                groups[-1] = (current_tuple[0], [*current_tuple[1], commit])
-                continue
-            if stage is None:
-                continue
-            current = stage
-            groups.append((stage, [commit]))
-        else:
-            groups[-1][1].append(commit)
+
+        if stage is None:
+            # 无法识别的 scope 并入前一段，避免出现只有一条提交的孤立里程碑
+            if groups:
+                groups[-1][3].append(commit)
+            continue
+
+        if stage is current:
+            groups[-1][3].append(commit)
+            continue
+
+        current = stage
+        repeated = stage.key in seen
+        seen.add(stage.key)
+        title = f"{stage.title}（迭代增强）" if repeated else stage.title
+        goal = f"在既有「{stage.title}」能力上迭代增强：{stage.goal}" if repeated else stage.goal
+        groups.append((stage, title, goal, [commit]))
 
     drafts: list[MilestoneDraft] = []
-    for position, (stage, group) in enumerate(groups, start=1):
+    for position, (stage, title, goal, group) in enumerate(groups, start=1):
         drafts.append(
             MilestoneDraft(
                 index=position,
                 key=stage.key,
-                title=stage.title,
-                goal=stage.goal,
+                title=title,
+                goal=goal,
                 verify=stage.verify,
                 commits=tuple(group),
             )
         )
     return drafts
-
 
 
 @dataclass(frozen=True)

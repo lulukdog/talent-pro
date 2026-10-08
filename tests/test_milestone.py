@@ -184,3 +184,21 @@ def test_plan_by_stage_attaches_unknown_scopes_to_previous_group() -> None:
     drafts = plan_milestones_by_stage(commits)
     assert len(drafts) == 1
     assert drafts[0].commit_count == 2
+
+
+def test_plan_by_stage_marks_repeated_stage_as_iteration() -> None:
+    commits = make_commits(["feat(spec): 解析", "feat(report): 报告", "feat(spec): 解析增强"])
+    drafts = plan_milestones_by_stage(commits)
+    assert [draft.title for draft in drafts] == [
+        "题目解析与数据模型",
+        "报告生成与解析",
+        "题目解析与数据模型（迭代增强）",
+    ]
+    assert drafts[-1].goal.startswith("在既有「题目解析与数据模型」能力上迭代增强")
+    assert validate_milestones(drafts, commits) == []
+
+
+def test_plan_by_stage_ignores_leading_unknown_scope() -> None:
+    commits = make_commits(["随手改一下", "feat(spec): 解析"])
+    drafts = plan_milestones_by_stage(commits)
+    assert [draft.commit_count for draft in drafts] == [1]
