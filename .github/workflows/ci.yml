@@ -20,19 +20,21 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      # setup-uv 已按 matrix 版本建好 .venv 并激活；--clear 保证重复执行也能跑通
       - name: 安装依赖
         run: |
-          uv venv --python ${{ matrix.python-version }}
+          uv venv --clear --python ${{ matrix.python-version }}
           uv pip install -e ".[dev]"
 
+      # 直接调用已安装的命令，避免 uv run 再次同步环境
       - name: 静态检查
-        run: uv run ruff check .
+        run: ruff check .
 
       - name: 单元测试
-        run: uv run pytest -q
+        run: pytest -q
 
       - name: 仓库级自检
-        run: uv run talentpro repo-check . --strict
+        run: talentpro repo-check . --strict
 
       - name: 示例题目校验
-        run: uv run talentpro check examples/exam_001 --strict
+        run: talentpro check examples/exam_001 --strict
