@@ -79,6 +79,127 @@ DEFAULT_TITLE = "其他变更"
 MIN_MILESTONES = 2
 MAX_MILESTONES = 12
 
+@dataclass(frozen=True)
+class Stage:
+    """业务阶段：把若干子系统聚合成一个可独立验收的里程碑。"""
+
+    key: str
+    title: str
+    scopes: tuple[str, ...]
+    goal: str
+    verify: str
+
+
+#: 按业务开发顺序排列的阶段划分（平台「Milestone 划分」步骤的建议粒度）。
+STAGES: tuple[Stage, ...] = (
+    Stage(
+        key="skeleton",
+        title="工程骨架与依赖锁定",
+        scopes=("chore", "deps", "build"),
+        goal="仓库可安装、可导入，具备打包配置、忽略规则与锁定的开发依赖。",
+        verify='`uv pip install -e ".[dev]"` 成功，`python -c "import talentpro"` 无报错。',
+    ),
+    Stage(
+        key="spec",
+        title="题目解析与数据模型",
+        scopes=("spec",),
+        goal="让工具链能够稳定解析题目目录，并把 task.toml / 题面 / 判卷脚本统一成可复用的数据模型。",
+        verify="`uv run pytest tests/test_spec.py -q` 通过；缺 task.toml 时抛 TaskFormatError。",
+    ),
+    Stage(
+        key="report",
+        title="报告生成与解析",
+        scopes=("report",),
+        goal="统一 report.txt 的生成与解析语义，使参考解与判卷断言基于同一套真值。",
+        verify="`uv run pytest tests/test_report.py -q` 通过；`talentpro compare` 能定位差异。",
+    ),
+    Stage(
+        key="validators",
+        title="规范校验规则集",
+        scopes=("validators", "security"),
+        goal="把题库规范固化成可执行规则，覆盖结构、元数据、题面、一致性与敏感信息。",
+        verify="`uv run pytest tests/test_validators.py tests/test_consistency.py tests/test_security.py -q` 通过。",
+    ),
+    Stage(
+        key="repo",
+        title="仓库级质量检查",
+        scopes=("repo",),
+        goal="对照平台 Repo 质量检查，校验功能子系统、README 与代码一致性、测试覆盖与整洁度。",
+        verify="`uv run pytest tests/test_repo_check.py -q` 通过；本仓库自检 0 error。",
+    ),
+    Stage(
+        key="process",
+        title="提交历史与里程碑分析",
+        scopes=("gitlog", "milestone", "release"),
+        goal="把过程质量量化：提交说明质量分、里程碑划分与覆盖 / 粒度自检。",
+        verify="`uv run pytest tests/test_gitlog.py tests/test_milestone.py -q` 通过。",
+    ),
+    Stage(
+        key="authoring",
+        title="待办清单与题目脚手架",
+        scopes=("backlog", "scaffold"),
+        goal="一条命令造出可通过校验的题目，并由检查结论生成后续工作清单。",
+        verify="`uv run pytest tests/test_backlog.py tests/test_scaffold.py -q` 通过；脚手架产物 0 error。",
+    ),
+    Stage(
+        key="cli",
+        title="命令行编排",
+        scopes=("cli",),
+        goal="把校验、解析、划分、造题能力串成可编排的流水线，并给出稳定的返回码约定。",
+        verify="`uv run pytest tests/test_cli.py -q` 通过；各子命令返回码符合约定。",
+    ),
+    Stage(
+        key="quality",
+        title="文档、示例与持续集成",
+        scopes=("docs", "tests", "ci"),
+        goal="沉淀规范与流程文档，收录示例题目，并在 CI 中固化 lint 与测试。",
+        verify="`talentpro repo-check . --strict` 0 warning；CI 在 3.11 / 3.12 上绿灯。",
+    ),
+)
+
+
+def stage_for(key: str) -> Stage | None:
+    """按 scope（或 type）找到所属业务阶段。"""
+    for stage in STAGES:
+        if key in stage.scopes:
+            return stage
+    return None
+
+
+def plan_milestones_by_stage(commits: Sequence[Commit]) -> list[MilestoneDraft]:
+    """按业务阶段聚合提交，颗粒度对齐平台建议（通常 6~8 个里程碑）。"""
+    groups: list[tuple[Stage, list[Commit]]] = []
+    current: Stage | None = None
+    for commit in commits:
+        commit_type, scope = parse_conventional(commit.subject)
+        stage = stage_for(scope or commit_type or "other")
+        if stage is None or stage is not current:
+            if stage is None and current is not None:
+                current_tuple = groups[-1]
+                groups[-1] = (current_tuple[0], [*current_tuple[1], commit])
+                continue
+            if stage is None:
+                continue
+            current = stage
+            groups.append((stage, [commit]))
+        else:
+            groups[-1][1].append(commit)
+
+    drafts: list[MilestoneDraft] = []
+    for position, (stage, group) in enumerate(groups, start=1):
+        drafts.append(
+            MilestoneDraft(
+                index=position,
+                key=stage.key,
+                title=stage.title,
+                goal=stage.goal,
+                verify=stage.verify,
+                commits=tuple(group),
+            )
+        )
+    return drafts
+
+
 
 @dataclass(frozen=True)
 class MilestoneDraft:

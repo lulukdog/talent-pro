@@ -49,7 +49,8 @@ python -m compileall -q talentpro      # 可解析率
 独立目标。本仓库的提交已经按子系统切分，直接生成即可：
 
 ```bash
-talentpro milestones . --out docs/MILESTONES.md      # 生成 Markdown，含提交区间
+talentpro milestones . --by-stage --out /tmp/MILESTONES.md   # 按业务阶段聚合，颗粒度对齐平台
+talentpro milestones . --out /tmp/MILESTONES.md              # 按子系统细分，含提交区间
 talentpro milestones . --json | jq '.milestones[] | {title, commit_range}'   # 只取区间
 ```
 

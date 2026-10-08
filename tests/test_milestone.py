@@ -6,9 +6,12 @@ from datetime import datetime, timedelta
 
 from talentpro.gitlog import Commit
 from talentpro.milestone import (
+    STAGES,
     MilestoneDraft,
     plan_milestones,
+    plan_milestones_by_stage,
     render_milestones,
+    stage_for,
     validate_milestones,
 )
 
@@ -127,3 +130,57 @@ def test_render_milestones_markdown() -> None:
     assert "提交区间" in markdown
     assert "题目解析与数据模型" in markdown
     assert markdown.endswith("\n")
+
+
+STAGE_SUBJECTS = [
+    "chore: 初始化仓库骨架",
+    "feat(spec): 增加题目解析",
+    "feat(report): 统一报告契约",
+    "feat(validators): 增加规则框架",
+    "feat(security): 增加敏感信息扫描",
+    "feat(gitlog): 读取提交历史",
+    "feat(milestone): 划分里程碑",
+    "docs: 补充规范文档",
+    "ci: 增加流水线",
+]
+
+
+def test_stage_for_maps_scope_and_type() -> None:
+    assert stage_for("spec") is not None
+    assert stage_for("security") is stage_for("validators")
+    assert stage_for("unknown-scope") is None
+
+
+def test_stages_come_in_business_order() -> None:
+    keys = [stage.key for stage in STAGES]
+    assert keys[0] == "skeleton"
+    assert keys[-1] == "quality"
+    assert len(keys) == len(set(keys))
+
+
+def test_plan_by_stage_merges_subsystems() -> None:
+    drafts = plan_milestones_by_stage(make_commits(STAGE_SUBJECTS))
+    titles = [draft.title for draft in drafts]
+    assert titles == [
+        "工程骨架与依赖锁定",
+        "题目解析与数据模型",
+        "报告生成与解析",
+        "规范校验规则集",
+        "提交历史与里程碑分析",
+        "文档、示例与持续集成",
+    ]
+    validators = next(draft for draft in drafts if draft.key == "validators")
+    assert validators.commit_count == 2
+
+
+def test_plan_by_stage_covers_every_commit() -> None:
+    commits = make_commits(STAGE_SUBJECTS)
+    drafts = plan_milestones_by_stage(commits)
+    assert validate_milestones(drafts, commits) == []
+
+
+def test_plan_by_stage_attaches_unknown_scopes_to_previous_group() -> None:
+    commits = make_commits(["feat(spec): 解析", "随手改一下"])
+    drafts = plan_milestones_by_stage(commits)
+    assert len(drafts) == 1
+    assert drafts[0].commit_count == 2

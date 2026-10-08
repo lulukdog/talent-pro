@@ -111,7 +111,7 @@ talent-pro/
 | `report` | 由访问日志生成标准报告 | `-o/--output` |
 | `compare` | 比较两份报告 | `<expected> <actual>` |
 | `scaffold` | 生成新题目目录 | `--dest` `--author` `--difficulty` `--log-lines` |
-| `milestones` | 按提交历史划分里程碑 | `--json` `--out` `--max-per-milestone` |
+| `milestones` | 按提交历史划分里程碑 | `--by-stage` `--json` `--out` `--max-per-milestone` |
 | `todos` | 生成后续工作清单 | `--json` `--minimum` |
 | `history` | 提交历史与说明质量 | `--json` |
 

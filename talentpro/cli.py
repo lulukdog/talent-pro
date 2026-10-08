@@ -14,7 +14,12 @@ from pathlib import Path
 from . import __version__
 from .backlog import render_todos, suggest_todos
 from .gitlog import GitError, assess_messages, chronological, history_summary, read_commits
-from .milestone import plan_milestones, render_milestones, validate_milestones
+from .milestone import (
+    plan_milestones,
+    plan_milestones_by_stage,
+    render_milestones,
+    validate_milestones,
+)
 from .models import CheckReport, Severity
 from .report import analyze, compare_reports, load_log, render_report
 from .scaffold import scaffold_task
@@ -73,6 +78,11 @@ def build_parser() -> argparse.ArgumentParser:
     milestones.add_argument("--json", action="store_true")
     milestones.add_argument("--out", type=Path, help="写入 Markdown 文件")
     milestones.add_argument("--max-per-milestone", type=int, default=8)
+    milestones.add_argument(
+        "--by-stage",
+        action="store_true",
+        help="按业务阶段聚合（颗粒度更粗，对齐平台建议的 6~8 个里程碑）",
+    )
 
     todos = subparsers.add_parser("todos", help="生成后续工作清单")
     todos.add_argument("task", type=Path, nargs="?", help="题目目录；缺省只输出通用清单")
@@ -202,7 +212,10 @@ def cmd_milestones(args: argparse.Namespace) -> int:
         return EXIT_ERROR
 
     ordered = chronological(commits)
-    drafts = plan_milestones(ordered, max_per_milestone=args.max_per_milestone)
+    if args.by_stage:
+        drafts = plan_milestones_by_stage(ordered)
+    else:
+        drafts = plan_milestones(ordered, max_per_milestone=args.max_per_milestone)
     issues = validate_milestones(drafts, ordered)
 
     if args.out:
