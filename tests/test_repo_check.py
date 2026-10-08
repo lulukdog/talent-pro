@@ -6,6 +6,8 @@ from pathlib import Path
 
 from talentpro.validators.repo import check_repository
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
 
 def test_repo_root_missing(tmp_path: Path) -> None:
     report = check_repository(tmp_path / "nope")
@@ -66,3 +68,9 @@ def test_hygiene_reports_stray_artifacts(tmp_path: Path) -> None:
     messages = [item.message for item in report.results if item.rule_id == "repo.hygiene"]
     assert any("leftover.pyc" in message for message in messages)
     assert any(".DS_Store" in message for message in messages)
+
+
+def test_this_repository_passes_repo_checks() -> None:
+    """仓库自身必须 0 error：文档、入口点与代码不能脱节。"""
+    report = check_repository(REPO_ROOT)
+    assert report.errors == [], [item.message for item in report.errors]
